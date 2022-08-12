@@ -10,7 +10,7 @@ def get_workspace_defs():
     c_cpp_properties_file.close()
     return files
     
-def find_ue4_dir(file_path):
+def find_ue4(file_path):
     file = open(file_path)
     data = json.load(file)
     file.close()
@@ -20,17 +20,12 @@ def fix_strings(file_path):
     file = open(file_path, "r")
     data = json.load(file)
     data_copy = data.copy()
-    i = 0
-    for entry in data:
-        for key, value in entry.items():
-            value = value.replace("\"","")
-            base_strings = value.split("@");
-            new_strings = []
-            for string in base_strings:
-                new_strings.append("\"" + string.rstrip() + "\"")
-            inner_entry = ' @'.join(new_strings)
-            data_copy[i][key] = inner_entry
-        i=i+1
+    command_to_change = data[0]["command"].split("@")[0].strip()
+    command_changed = "\"" + command_to_change + "\" "
+    print(command_to_change)
+    print(command_changed)
+    for entry_id in range(0, len(data_copy)):
+        data_copy[entry_id]["command"] = data[entry_id]["command"].replace(command_to_change, command_changed)
     file.close()
     file = open(file_path, "w")
     json.dump(data_copy, file, sort_keys=False, indent=4)
@@ -51,28 +46,17 @@ def regenerate_project_files(ue4_dir):
     os.system(build_bat_path + " -ProjectFiles " + target_path)
 
 def main():
-
-    ## 1. Setting up paths and data
-
-    # get paths to jsons.
     file_paths = get_workspace_defs()
     files = []
-    #get directory of engine .vscode
-    ue4_dir = find_ue4_dir(file_paths[0])
-
-    # get all files from project .vscode
+    ue4_dir = find_ue4(file_paths[0])
     for file_path in file_paths:
         file = file_path.split("\\")
         files.append(file[-1])
 
-    # create path to engine jsons
     for file in files:
-        file_paths.append(ue4_dir +"\\" + file)
-
-    ## 2. using UBT to generate project files 
+        file_paths.append(ue4_dir +"\\" + file);
     regenerate_project_files(ue4_dir)
 
-    ## 3. fixing missing "\"" 
     for file_path in file_paths:
         fix_strings(file_path)
 
